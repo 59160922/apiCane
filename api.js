@@ -93,10 +93,10 @@ app.get('/isRowExisted/:row',(req,res)=>{
           }else{
               
               if (queryResult.rowsAffected[0] > 0){
-                  const state = {"state":"true"}
+                  const state = {"state":true}
                    res.send(state);
               }else{
-                const state = {"state":"false"}
+                const state = {"state":false}
                    res.send(state);
               }
           } 
@@ -115,17 +115,40 @@ app.get('/getCaneTypeById/:id',(req,res)=>{
         .then(function(pool){
 
             let request = new sql.Request(pool);
-            request.query(`SELECT * FROM tb_queue_caneType WHERE cane_id=${req.params.id}`,function (err,queryResult){
+            request.query(`SELECT cane_name FROM tb_queue_caneType WHERE cane_id=${req.params.id}`,function (err,queryResult){
                 if (err){
                     console.log(err)
-                    res.send(err);
+                    res.send({error:err,state:false});
                 }else{
-                    res.status(200).send(true);
+                    res.status(200).send({name:queryResult.recordset[0].cane_name,state:true});
                 }
                 conn.close()
             })
         })
 })
+app.get('/getQueueLabel',  (req, res)=> {
+    // connect to your database
+    let conn = new sql.ConnectionPool(config);
+    
+    conn.connect()
+         .then(function (pool) {
+    
+             // create Request object
+             let request = new sql.Request(pool);                          
+             // query to the database
+             request.query('SELECT l.queueLabel_row,l.cane_id,l.queueLabel_queue,c.cane_name FROM  tb_queue_label l left join tb_queue_caneType c on c.cane_id=l.cane_id  ORDER BY queueLabel_row', function (err, queryResult) {
+                 if (err) {
+                     console.log(err);
+                     res.send(err);
+                 } else {
+                     res.send(queryResult );
+                 }
+                 conn.close();
+             });
+        });           
+    
+    
+    });
 app.get('/getCaneType',  (req, res)=> {
     // connect to your database
     let conn = new sql.ConnectionPool(config);
@@ -155,18 +178,42 @@ app.get('/getCaneType',  (req, res)=> {
     conn.connect()
     .then( function (pool) {
         let request = new sql.Request(pool);       
-        request.query(`UPDATE tb_queue_label SET cane_id = '${req.body.cane}' WHERE queueLabel_row = ${req.body.row}`, function (err, queryResult) {
+        request.query(`UPDATE tb_queue_label SET cane_id = '${req.body.cane}',queueLabel_queue='${req.body.queue}' WHERE queueLabel_row = ${req.body.row}`, function (err, queryResult) {
             if (err) {
                console.log(err);
-                res.send(err);
+                res.send({error:err,state:false});
             } else {
-                res.status(201);
+                res.status(201).send({state:true});
             }
                 conn.close();
        });
     })
  })
-  
+  app.get('/getQueueLabel/:id',  (req, res)=> {
+    // connect to your database
+    let conn = new sql.ConnectionPool(config);
+    
+    conn.connect()
+         .then(function (pool) {
+    
+             // create Request object
+             let request = new sql.Request(pool);                          
+             // query to the database
+             request.query(`SELECT l.queueLabel_row,l.cane_id,l.queueLabel_queue,c.cane_name 
+                            FROM  tb_queue_label l left join tb_queue_caneType c on c.cane_id=l.cane_id  
+                            where l.queueLabel_row=${req.params.id}`, function (err, queryResult) {
+                 if (err) {
+                     console.log(err);
+                     res.send(err);
+                 } else {
+                     res.send(queryResult );
+                 }
+                 conn.close();
+             });
+        });           
+    
+    
+    });
   app.post('/add',  (req,res)=>{
  
     let conn = new  sql.ConnectionPool(config);
@@ -182,12 +229,12 @@ app.get('/getCaneType',  (req, res)=> {
          
         console.log(req.body)
       
-         request.query(`INSERT INTO tb_queue_label(queueLabel_row,cane_id) VALUES('${req.body.row}','${req.body.cane}')`, function (err, queryResult) {
+         request.query(`INSERT INTO tb_queue_label(queueLabel_row,cane_id,queueLabel_queue) VALUES('${req.body.row}','${req.body.cane}','${req.body.queue}')`, function (err, queryResult) {
                  if (err) {
                     console.log(err);
-                     res.send(err);
+                     res.send({error:err,state:false});
                  } else {
-                    res.sendStatus(201);
+                    res.send({state:true});
                  }
                      conn.close();
             });
